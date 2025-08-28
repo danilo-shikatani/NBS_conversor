@@ -59,7 +59,11 @@ if arquivo_municipal and arquivo_nbs:
             # --- Arquivo Municipal ---
             try:
                 df_municipal = pd.read_csv(arquivo_municipal, sep=';', encoding='latin1', header=7)
-                df_municipal = df_municipal.iloc[:, [0, 2]].copy()
+                if df_municipal.shape[1] < 2:
+                    st.error("O arquivo municipal precisa ter pelo menos 2 colunas.")
+                    st.stop()
+                # Pega sempre as duas primeiras colunas
+                df_municipal = df_municipal.iloc[:, [0, 1]].copy()
                 df_municipal.columns = ['codigo_servico_sp', 'descricao_servico_sp']
                 df_municipal.dropna(subset=['descricao_servico_sp'], inplace=True)
                 df_municipal = df_municipal[~df_municipal['descricao_servico_sp'].str.contains(r'^\d+\.\s', regex=True)]
@@ -76,6 +80,9 @@ if arquivo_municipal and arquivo_nbs:
                     engine='python',
                     on_bad_lines='skip'
                 )
+                if df_nbs.shape[1] < 2:
+                    st.error("O arquivo NBS precisa ter pelo menos 2 colunas.")
+                    st.stop()
                 df_nbs = df_nbs.iloc[:, :2]  # pegar apenas as duas primeiras colunas
                 df_nbs.columns = ['codigo_nbs', 'descricao_nbs']
             except Exception as e:
@@ -137,4 +144,3 @@ if 'df_resultado' in st.session_state:
         file_name="mapeamento_servicos_para_nbs.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-
