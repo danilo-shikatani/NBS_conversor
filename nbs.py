@@ -11,29 +11,36 @@ st.markdown("Faça o upload do seu arquivo de códigos de serviço (ex: anexo da
 
 # --- 2. FUNÇÕES DE PROCESSAMENTO E CACHE ---
 
-# Usamos o cache do Streamlit para baixar a tabela NBS apenas uma vez.
 @st.cache_data
 def carregar_dados_nbs():
     """Baixa e carrega a tabela oficial NBS em um DataFrame, guardando em cache."""
     try:
         url_nbs = 'https://www.gov.br/mdic/pt-br/images/REPOSITORIO/scs/decos/NBS/NBSa_2-0.csv'
-        df = pd.read_csv(url_nbs, sep=';', encoding='latin1', header=0)
+        
+        # --- CORREÇÃO APLICADA AQUI ---
+        # Adicionamos engine='python' para usar o leitor mais flexível
+        df = pd.read_csv(
+            url_nbs,
+            sep=';',
+            encoding='latin1',
+            header=0,
+            engine='python'  # <<< ADICIONADO PARA LIDAR COM ARQUIVO MAL FORMATADO
+        )
+        # --- FIM DA CORREÇÃO ---
+        
         df.columns = ['codigo_nbs', 'descricao_nbs']
         return df
     except Exception as e:
-        st.error(f"Não foi possível carregar a tabela NBS do governo. Verifique a conexão. Erro: {e}")
+        st.error(f"Não foi possível carregar a tabela NBS do governo. Erro: {e}")
         return None
 
 def clean_text(text):
-    """Função para limpar o texto para uma melhor comparação."""
-    if not isinstance(text, str):
-        return ''
+    if not isinstance(text, str): return ''
     text = text.lower()
-    text = re.sub(r'[^a-z0-9\sà-ú]', '', text) # Mantém acentos
+    text = re.sub(r'[^a-z0-9\sà-ú]', '', text)
     return text
 
 def find_best_match(description, nbs_df):
-    """Encontra a melhor correspondência na tabela NBS com base na similaridade de texto."""
     best_score = 0
     best_code = None
     best_desc = None
@@ -44,7 +51,6 @@ def find_best_match(description, nbs_df):
         nbs_words = set(nbs_row['descricao_limpa'].split())
         if not nbs_words: continue
         
-        # Algoritmo de similaridade Jaccard (eficiente para palavras em comum)
         score = len(desc_words.intersection(nbs_words)) / len(desc_words.union(nbs_words))
         
         if score > best_score:
@@ -55,8 +61,6 @@ def find_best_match(description, nbs_df):
 
 
 # --- 3. INTERFACE DO APLICATIVO ---
-
-# Carrega os dados da NBS (virá do cache na maioria das vezes)
 df_nbs = carregar_dados_nbs()
 
 if df_nbs is not None:
@@ -69,55 +73,41 @@ if df_nbs is not None:
     if uploaded_file:
         st.header("▶️ 2. Inicie o Mapeamento")
         if st.button("Mapear Códigos de Serviço para NBS"):
-            
             with st.spinner("Mágica em andamento... Lendo seu arquivo e comparando com a tabela NBS. Isso pode levar alguns minutos."):
-                
-                # Leitura e limpeza do arquivo do usuário
                 df_municipal = pd.read_csv(uploaded_file, sep=';', encoding='latin1', header=7)
                 df_municipal = df_municipal.iloc[:, [0, 2]].copy()
                 df_municipal.columns = ['codigo_servico_sp', 'descricao_servico_sp']
                 df_municipal.dropna(subset=['descricao_servico_sp'], inplace=True)
                 df_municipal = df_municipal[~df_municipal['descricao_servico_sp'].str.contains(r'^\d+\.\s', regex=True)]
                 
-                # Limpeza das descrições para comparação
                 df_municipal['descricao_limpa'] = df_municipal['descricao_servico_sp'].apply(clean_text)
                 df_nbs['descricao_limpa'] = df_nbs['descricao_nbs'].apply(clean_text)
 
-                # Mapeamento
                 mapeamento_results = df_municipal['descricao_limpa'].apply(lambda x: find_best_match(x, df_nbs))
 
                 df_municipal['codigo_nbs_sugerido'] = [res[0] for res in mapeamento_results]
                 df_municipal['descricao_nbs_sugerida'] = [res[1] for res in mapeamento_results]
                 df_municipal['pontuacao_confianca'] = [res[2] for res in mapeamento_results]
 
-                # Salva o resultado no estado da sessão para exibição e download
                 st.session_state['df_resultado'] = df_municipal[[
                     'codigo_servico_sp', 'descricao_servico_sp', 'codigo_nbs_sugerido', 
                     'descricao_nbs_sugerida', 'pontuacao_confianca'
                 ]]
-                
             st.balloons()
             st.success("Mapeamento concluído com sucesso!")
 
 # --- 4. EXIBIÇÃO DO RESULTADO E DOWNLOAD ---
 if 'df_resultado' in st.session_state:
     st.header("📊 3. Resultado do Mapeamento")
-    
     df_resultado_final = st.session_state['df_resultado']
-    
     st.info(f"Foram processados {len(df_resultado_final)} serviços. A 'pontuação de confiança' (de 0 a 1) indica a similaridade entre as descrições.")
-    
-    # Mostra a tabela de resultados na tela
     st.dataframe(df_resultado_final)
 
-    # Prepara o arquivo para download
     @st.cache_data
     def converter_df_para_csv(df):
         return df.to_csv(index=False, sep=';', encoding='utf-8-sig').encode('utf-8')
 
     csv_final = converter_df_para_csv(df_resultado_final)
-    
-    # Botão de download
     st.download_button(
         label="📥 Baixar Resultado em CSV",
         data=csv_final,
