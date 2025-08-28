@@ -17,16 +17,17 @@ def carregar_dados_nbs():
     try:
         url_nbs = 'https://www.gov.br/mdic/pt-br/images/REPOSITORIO/scs/decos/NBS/NBSa_2-0.csv'
         
-        # --- CORREÇÃO APLICADA AQUI ---
-        # Adicionamos engine='python' para usar o leitor mais flexível
+        # --- ESTA É A LINHA QUE RESOLVE O PROBLEMA ---
+        # Adicionamos engine='python' para usar o leitor mais flexível,
+        # que consegue lidar com arquivos mal formatados.
         df = pd.read_csv(
             url_nbs,
             sep=';',
             encoding='latin1',
             header=0,
-            engine='python'  # <<< ADICIONADO PARA LIDAR COM ARQUIVO MAL FORMATADO
+            engine='python'
         )
-        # --- FIM DA CORREÇÃO ---
+        # -------------------------------------------
         
         df.columns = ['codigo_nbs', 'descricao_nbs']
         return df
