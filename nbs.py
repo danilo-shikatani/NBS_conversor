@@ -9,21 +9,14 @@ st.title("🗺️ Conversor de Códigos de Serviço Municipal para NBS")
 st.markdown("Faça o upload dos dois arquivos abaixo para iniciar a conversão.")
 
 # --- 2. FUNÇÕES DE PROCESSAMENTO ---
-# (Não precisam de cache, pois os dados vêm do upload do usuário)
-
 def clean_text(text):
-    """Função para limpar o texto para uma melhor comparação."""
-    if not isinstance(text, str):
-        return ''
+    if not isinstance(text, str): return ''
     text = text.lower()
     text = re.sub(r'[^a-z0-9\sà-ú]', '', text)
     return text
 
 def find_best_match(description, nbs_df):
-    """Encontra a melhor correspondência na tabela NBS com base na similaridade de texto."""
-    best_score = 0
-    best_code = None
-    best_desc = None
+    best_score = 0; best_code = None; best_desc = None
     desc_words = set(description.split())
     if not desc_words: return None, None, 0
     
@@ -34,14 +27,11 @@ def find_best_match(description, nbs_df):
         score = len(desc_words.intersection(nbs_words)) / len(desc_words.union(nbs_words))
         
         if score > best_score:
-            best_score = score
-            best_code = nbs_row['codigo_nbs']
-            best_desc = nbs_row['descricao_nbs']
+            best_score, best_code, best_desc = score, nbs_row['codigo_nbs'], nbs_row['descricao_nbs']
     return best_code, best_desc, best_score
 
 
 # --- 3. INTERFACE DE UPLOAD ---
-
 st.header("📤 Passo 1: Faça o Upload do Arquivo Municipal")
 arquivo_municipal = st.file_uploader(
     "Selecione o arquivo da sua prefeitura (ex: anexo de São Paulo)",
@@ -49,32 +39,37 @@ arquivo_municipal = st.file_uploader(
 )
 
 st.header("📤 Passo 2: Faça o Upload da Tabela NBS")
-st.markdown("Se você não tem este arquivo, baixe-o uma única vez [aqui](https://www.gov.br/mdic/pt-br/images/REPOSITORIO/scs/decos/NBS/NBSa_2-0.csv).")
+st.markdown("Use o arquivo `NBSa_2-0.csv` que você já baixou.")
 arquivo_nbs = st.file_uploader(
-    "Selecione o arquivo 'NBSa_2-0.csv' que você baixou",
+    "Selecione o arquivo 'NBSa_2-0.csv'",
     type=['csv']
 )
 
 
 # --- 4. LÓGICA DE PROCESSAMENTO ---
-
-# Só continua se os dois arquivos forem enviados
 if arquivo_municipal and arquivo_nbs:
     st.header("▶️ Passo 3: Inicie o Mapeamento")
     if st.button("Mapear Códigos de Serviço para NBS"):
         
         with st.spinner("Mágica em andamento... Lendo seus arquivos e fazendo a correspondência. Isso pode levar alguns minutos."):
             
-            # Leitura do arquivo municipal
+            # Leitura do arquivo municipal (sem alterações)
             df_municipal = pd.read_csv(arquivo_municipal, sep=';', encoding='latin1', header=7)
             df_municipal = df_municipal.iloc[:, [0, 2]].copy()
             df_municipal.columns = ['codigo_servico_sp', 'descricao_servico_sp']
             df_municipal.dropna(subset=['descricao_servico_sp'], inplace=True)
             df_municipal = df_municipal[~df_municipal['descricao_servico_sp'].str.contains(r'^\d+\.\s', regex=True)]
             
-            # Leitura da tabela NBS
-            df_nbs = pd.read_csv(arquivo_nbs, sep=';', encoding='latin1', header=0, engine='python')
+            # --- CORREÇÃO PRINCIPAL APLICADA AQUI ---
+            # Leitura da tabela NBS com os parâmetros corretos que descobrimos
+            df_nbs = pd.read_csv(
+                arquivo_nbs,
+                sep='|',         # <<< CORRIGIDO: Trocado de ';' para '|'
+                encoding='latin1',
+                header=0
+            )
             df_nbs.columns = ['codigo_nbs', 'descricao_nbs']
+            # --- FIM DA CORREÇÃO ---
             
             st.success("Arquivos carregados com sucesso. Iniciando comparação...")
 
