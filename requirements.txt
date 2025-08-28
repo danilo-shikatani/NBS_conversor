@@ -1,5 +1,16 @@
-streamlit
-pandas
-openpyxl
-lxml
-requests
+# Streamlit e interface web
+streamlit>=1.25.0
+
+# Manipulação de dados
+pandas>=2.0.0
+numpy>=1.25.0
+
+# Exportação para Excel
+xlsxwriter>=3.1.0
+openpyxl>=3.1.0
+
+# Similaridade de strings (opcional, mas recomendado para acelerar e melhorar o matching)
+rapidfuzz>=2.8.0
+
+# Suporte a caching do Streamlit
+cachetools>=5.3.1
