@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import re
+import io
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Conversor de Códigos de Serviço para NBS", layout="wide")
@@ -108,10 +109,10 @@ if 'df_resultado' in st.session_state:
     st.info(f"Foram processados {len(df_resultado_final)} serviços. A 'pontuação de confiança' (0 a 1) indica similaridade entre descrições.")
     st.dataframe(df_resultado_final)
 
+    # Download CSV
     @st.cache_data
     def converter_df_para_csv(df):
         return df.to_csv(index=False, sep=';', encoding='utf-8-sig').encode('utf-8')
-
     csv_final = converter_df_para_csv(df_resultado_final)
     st.download_button(
         label="📥 Baixar Resultado em CSV",
@@ -119,3 +120,21 @@ if 'df_resultado' in st.session_state:
         file_name="mapeamento_servicos_para_nbs.csv",
         mime="text/csv",
     )
+
+    # Download Excel
+    @st.cache_data
+    def converter_df_para_excel(df):
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Mapeamento')
+            writer.save()
+        return output.getvalue()
+    
+    excel_final = converter_df_para_excel(df_resultado_final)
+    st.download_button(
+        label="📥 Baixar Resultado em Excel",
+        data=excel_final,
+        file_name="mapeamento_servicos_para_nbs.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
