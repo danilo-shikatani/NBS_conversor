@@ -122,13 +122,12 @@ if 'df_resultado' in st.session_state:
     )
 
     # Download Excel
-    @st.cache_data
-    def converter_df_para_excel(df):
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, index=False, sheet_name='Mapeamento')
-            writer.save()
-        return output.getvalue()
+   @st.cache_data
+def converter_df_para_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Mapeamento')
+    return output.getvalue()
     
     excel_final = converter_df_para_excel(df_resultado_final)
     st.download_button(
@@ -137,4 +136,5 @@ if 'df_resultado' in st.session_state:
         file_name="mapeamento_servicos_para_nbs.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
 
